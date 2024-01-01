@@ -1,11 +1,14 @@
 from itertools import permutations
 
-type_vars = {
+ptr_vars = {
         "void*": "void_ptr",
+        }
+
+int_vars = {
         "intptr_t": "iptr",
         "uintptr_t": "uptr",
         "size_t": "size",
-        "bool": "boolean",
+#        "bool": "boolean",
         "int8_t": "int8",
         "uint8_t": "uint8",
         "int16_t": "int16",
@@ -26,6 +29,9 @@ type_vars = {
         "unsigned long": "u_long",
         "long long": "s_longlong",
         "unsigned long long": "u_longlong",
+        }
+
+float_vars = {
         # "_Float16": fl16,
         "float": "fl",
         "double": "doub",
@@ -59,17 +65,33 @@ def main():
     # Body of the main function:
     body = ""
 
+    # A dict of all number types
+    num_vars = int_vars | float_vars
+
+    # Add pointer types for all listed types
+    for ctype in num_vars:
+        ptr_type = ctype + '*'
+        var = num_vars[ctype] + "_ptr"
+        ptr_vars[ptr_type] = var
+
     # Declare the variables for each type
     var_decls = ""
-    type_list = []
+    type_vars = ptr_vars | int_vars | float_vars
     for t in type_vars:
         var_decls += f"    {t} {type_vars[t]};\n"
-        type_list.append(t)
 
     body += var_decls
 
-    # Get all legal permutations of type casting
-    type_permutations = permutations(type_list, 2)
+    # Create permutations based on a loose idea of the combinations that are allowed
+    intxptr_vars = int_vars | ptr_vars
+    intxptr_list = [*intxptr_vars]
+    intxptr_permutations = permutations(intxptr_list, 2)
+
+    num_list = [*num_vars]
+    num_permutations = permutations(num_list, 2)
+
+    type_permutations = list(set([*intxptr_permutations, *num_permutations]))
+
     for i, p in enumerate(type_permutations):
         if (is_illegal_cast(p)):
             continue
@@ -77,11 +99,14 @@ def main():
         src  = p[1]
 
         body += "\n"
-        body += f"    {type_vars[src]} = 80;\n"
+        body += f"    {type_vars[src]} = ({src})80;\n"
         body += f"    {type_vars[dest]} = ({dest}){type_vars[src]};\n"
         body += f"    if ({type_vars[dest]} != 80) return {i+1};\n"
 
-    filename = "primitive_cast_testing.c"
+    body += "\n"
+    body += "    return 0;\n"
+
+    filename = "basic_cast_testing.c"
     with open(filename, 'w') as f:
         f.write(head)
         print(head)
