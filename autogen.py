@@ -31,35 +31,66 @@ type_vars = {
         "double": "doub",
         "long double": "l_doub",
         # "_Float128": fl128,
+
         # TODO: Complex types not supported in zig yet.
         # "float complex": "fl_complex",
         # "double complex": "doub_complex",
         # "long double complex": "long_doub_complex",
         }
 
-preamble = """
-#include stdbool.h
-#include stdint.h
-#include stddef.h
-//#include complex.h
+head = """\
+#include <stdbool.h>
+#include <stdint.h>
+#include <stddef.h>
+//#include <complex.h>
 
 int main() {
+"""
 
+tail = """\
+}
+
+// run-translated-c
+// c_frontend=aro,clang
+// link_libc=true
 """
 
 def main():
+    # Body of the main function:
+    body = ""
+
     # Declare the variables for each type
     var_decls = ""
     type_list = []
     for t in type_vars:
         var_decls += f"    {t} {type_vars[t]};\n"
         type_list.append(t)
-    
+
+    body += var_decls
+
+    # Get all legal permutations of type casting
     type_permutations = permutations(type_list, 2)
-    for p in type_permutations:
+    for i, p in enumerate(type_permutations):
         if (is_illegal_cast(p)):
             continue
+        dest = p[0]
+        src  = p[1]
 
+        body += "\n"
+        body += f"    {type_vars[src]} = 80;\n"
+        body += f"    {type_vars[dest]} = ({dest}){type_vars[src]};\n"
+        body += f"    if ({type_vars[dest]} != 80) return {i+1};\n"
+
+    filename = "primitive_cast_testing.c"
+    with open(filename, 'w') as f:
+        f.write(head)
+        print(head)
+        f.write(body)
+        print(body)
+        f.write(tail)
+        print(tail)
+
+# Detect whether a type cast is legal in C. ie. whether it will compile successfully.
 def is_illegal_cast(permutation: tuple) -> bool:
     if len(permutation) != 2:
         raise ValueError(f"permutation had {len(permutation)} items. Must have 2. {permutation}")
