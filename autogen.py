@@ -50,7 +50,7 @@ head = """\
 #include <stddef.h>
 //#include <complex.h>
 
-int main() {
+int run() {
 """
 
 tail = """\
